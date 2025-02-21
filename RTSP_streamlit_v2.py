@@ -5,6 +5,14 @@ from ultralytics import YOLO
 from PIL import Image
 import numpy as np
 import asyncio
+import time
+
+# Ensure an asyncio event loop is set (helps avoid "no running event loop" issues)
+try:
+    asyncio.get_running_loop()
+except RuntimeError:
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
 
 # Check if GPU is available
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -39,10 +47,10 @@ if st.button(button_label) and rtsp_url:
                 st.error("Streaming ended or failed to retrieve frame. Check your RTSP stream.")
                 break
 
-            # Perform inference
+            # Perform inference with YOLOv8
             results = model.predict(frame, conf=0.5, device=device)
 
-            # Plot the detections
+            # Draw detections on the frame
             for result in results:
                 frame = result.plot()
 
@@ -53,8 +61,8 @@ if st.button(button_label) and rtsp_url:
             # Display the frame in Streamlit
             stframe.image(img, use_column_width=True)
 
-            # Non-blocking delay (optional)
-            asyncio.sleep(0.01)
+            # Small delay to avoid hogging the CPU (use time.sleep in synchronous context)
+            time.sleep(0.01)
 
         cap.release()
         st.session_state.streaming = False
