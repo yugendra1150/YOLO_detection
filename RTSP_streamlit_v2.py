@@ -4,6 +4,7 @@ import streamlit as st
 from ultralytics import YOLO
 from PIL import Image
 import numpy as np
+import asyncio
 
 # Check if GPU is available
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -16,7 +17,7 @@ st.title("Real-Time Object Detection with YOLOv8")
 rtsp_url = st.text_input("Enter RTSP URL:", "")
 
 # Load the pre-trained YOLOv8n model
-model = YOLO('yolov8n.pt')  # Nano version of YOLOv8
+model = YOLO('yolov8n.pt')  # Ensure this file is in your deployment environment
 
 # Session state to manage streaming
 if 'streaming' not in st.session_state:
@@ -26,13 +27,12 @@ if 'streaming' not in st.session_state:
 button_label = "Stop Streaming" if st.session_state.streaming else "Start Streaming"
 if st.button(button_label) and rtsp_url:
     st.session_state.streaming = not st.session_state.streaming
-    
+
     if st.session_state.streaming:
-        cap = cv2.VideoCapture()
-        cap.open(rtsp_url, cv2.CAP_FFMPEG)  # Explicitly use FFMPEG backend
-        
+        # Initialize video capture without explicitly specifying backend
+        cap = cv2.VideoCapture(rtsp_url)
         stframe = st.empty()  # Placeholder for video frames
-        
+
         while cap.isOpened() and st.session_state.streaming:
             ret, frame = cap.read()
             if not ret:
@@ -45,13 +45,16 @@ if st.button(button_label) and rtsp_url:
             # Plot the detections
             for result in results:
                 frame = result.plot()
-            
-            # Convert OpenCV frame to RGB
+
+            # Convert BGR to RGB for display
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             img = Image.fromarray(frame)
-            
+
             # Display the frame in Streamlit
             stframe.image(img, use_column_width=True)
-        
+
+            # Non-blocking delay (optional)
+            asyncio.sleep(0.01)
+
         cap.release()
         st.session_state.streaming = False
